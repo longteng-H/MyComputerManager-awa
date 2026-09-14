@@ -1,33 +1,80 @@
-![title.png](https://s2.loli.net/2022/07/07/o9rWHAm6fiZS4pQ.png)
+# MyComputerManager-awa
 
-## 背景
-国内流氓软件经常为了某些目的无所不用其极，竟然想到通过Shell Extension在“此电脑”里面塞快捷方式，用户无法轻易删除。除了在这些流氓软件本身的设置里取消这个快捷方式，还有没有更优雅的办法？百度给出的答案无一例外都是修改注册表，这对于电脑小白极不友好，又非常危险。万一误删了系统关键条目，麻烦可就大了。
+**基于 [1357310795/MyComputerManager](https://github.com/1357310795/MyComputerManager) v1.03 的二次开发**
 
-于是，我萌生了开发这个小工具的念头。4天时间，查了大量资料，终于把这个写完了，又弥补了一片空白！
+---
 
-## 功能介绍
-![intro-p1.png](https://s2.loli.net/2022/07/07/IULqP6W3crB4Vxk.png)
-![intro-p3.png](https://s2.loli.net/2022/07/07/49FYxJUWj5l6Z8a.png)
-![intro-p2.png](https://s2.loli.net/2022/07/07/mC9lh4SvHUIrD1W.png)
+A enhanced fork of [MyComputerManager](https://github.com/1357310795/MyComputerManager) with batch management features and bug fixes.
 
-## 使用方法
-在[Github Releases](https://github.com/1357310795/MyComputerManager/releases)下载最新版程序，双击直接运行
+---
 
-## 开发者相关
-项目基于 .NET Framework 4.7.2 开发（为了兼容性就用老版本啦😓），又是一个极好的 WPF 学习材料。程序涉及到了：
-- 自定义控件（基于xaml/基于cs代码）
-- 重写控件样式
-- 数据绑定（绑定到其他控件/DataContext，设置RelativeSource）
-- Mvvm模式（PropertyChanged/Command，DataTemplate）
-- 附加事件+控件行为（Microsoft.Xaml.Behaviors库）
-- 异步方法
-- 依赖注入（Dependency Injection）模式
-- 页面导航
+## 修改内容 / Changes
 
-## 开源许可
-本程序通过 GNU General Public License v3.0 许可在 [GitHub](https://github.com/1357310795/MyComputerManager) 开源，如果您觉得软件好用，请不要吝惜您的 Star 哦，这会对我有非常大的帮助！
+### 新增功能 / New Features
 
-## 致谢
-感谢 @lepoco 的 [wpf-ui](https://github.com/lepoco/wpfui) 项目，Win11风格的控件来自于此。
+- **批量管理**：支持全选/取消全选、批量禁用、批量启用、批量删除操作
+- **列表多选**：每个项目新增 CheckBox 选择框，支持多选操作
+- **操作确认**：批量删除前弹出确认对话框，显示待删除项目名称，防止误操作
 
-感谢 @walterlv 和 @XIU2 [在 TileTool 下的讨论](https://github.com/XIU2/TileTool/pull/4)，本程序部分 UI 设计参考了这里。
+### Bug 修复 / Bug Fixes
+
+- **Registry64 兼容性**：修复源码构建版本在 64 位系统上仅显示 1 个项目（应显示 4 个）的问题，通过 `RegistryView.Registry64` 回退机制解决
+
+### 技术变更 / Technical Changes
+
+| 文件 / File | 变更说明 / Description |
+|---|---|
+| `Models/NamespaceItem.cs` | 新增 `IsSelected` 属性，修复 `RegKey_CLSID` 的 Registry64 兼容性 |
+| `ViewModels/MainPageViewModel.cs` | 新增批量操作命令（`BatchDelete`/`BatchDisable`/`BatchEnable`/`ToggleSelectAll`），注入 `IDialogService` |
+| `MainWindow.xaml` | 顶栏新增批量操作工具栏按钮（始终可见） |
+| `MainWindow.xaml.cs` | 新增 `GetMainPageVM()` 辅助方法及批量操作事件处理 |
+| `Styles/ItemListStyle.xaml` | DataTemplate 中新增 CheckBox 绑定 `IsSelected` |
+| `Converters/BoolToVisibilityConverter.cs` | 新增布尔值转可见性转换器 |
+| `Helpers/NamespaceHelper.cs` | 添加 `RegistryView.Registry64` 回退，修复 64 位系统兼容性 |
+
+## 构建 / Build
+
+**环境要求 / Requirements**：
+- Visual Studio 2019+ 或 MSBuild
+- .NET Framework 4.7.2 SDK
+
+**步骤 / Steps**：
+```bash
+# 恢复 NuGet 包
+nuget restore MyComputerManager.sln
+
+# 编译
+msbuild MyComputerManager.sln /p:Configuration=Release
+```
+
+**输出路径 / Output**：
+```
+MyComputerManager\bin\Release\MyComputerManager.exe
+```
+
+## 原项目说明 / Original Project
+
+### 背景 / Background
+
+国内流氓软件经常通过 Shell Extension 在"此电脑"里塞快捷方式，用户无法轻易删除。本工具通过可视化界面管理注册表中的 Shell Namespace 扩展项，安全高效。
+
+Bloatware often injects unwanted shortcuts into "This PC" via Shell Extensions. This tool provides a safe, visual interface to manage Shell Namespace registry entries.
+
+### 功能 / Features
+
+- 查看"此电脑"中所有 Shell Namespace 扩展项（系统 + 第三方）
+- 启用/禁用/删除指定项目
+- 添加自定义文件夹到"此电脑"
+- Win11 风格 UI（基于 wpfui）
+
+## 开源许可 / License
+
+本项目基于 **GNU General Public License v3.0** 开源。
+
+This project is licensed under the **GNU General Public License v3.0**.
+
+## 致谢 / Credits
+
+- 原项目作者 [@1357310795](https://github.com/1357310795) — [MyComputerManager](https://github.com/1357310795/MyComputerManager)
+- [@lepoco](https://github.com/lepoco) — [wpfui](https://github.com/lepoco/wpfui)（Win11 风格控件）
+- @walterlv 和 @XIU2 — [TileTool UI 讨论](https://github.com/XIU2/TileTool/pull/4)
