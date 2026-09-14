@@ -139,21 +139,50 @@
 
 ### 构建步骤
 
+**方式一：打包脚本（推荐）**
+
+```powershell
+# 打包 + 产物校验，输出到 dist\
+.\build.ps1
+
+# 追加隔离启动测试：复制到临时空目录运行，验证不依赖同级 DLL
+.\build.ps1 -SmokeTest
+```
+
+也可以直接双击 `build.bat`（自带 `-ExecutionPolicy Bypass`，避免执行策略拦截）。
+
+脚本依次完成：预检 Fody / Costura 包 → 定位 MSBuild → Release 重新生成 → **校验产物确实是单文件** → 复制到 `dist\`。校验环节会在「程序集名不符」「Costura 未织入」「输出目录残留依赖 DLL」时直接报错退出，不会让你拿到一个静默失败的产物。
+
+**方式二：手动命令**
+
 ```bash
 # 1. 还原 NuGet 包
 nuget restore MyComputerManager.sln
 
-# 2. 编译 Release 版本
-msbuild MyComputerManager.sln /p:Configuration=Release
+# 2. 编译 Release 版本（用 Rebuild，确保 Costura 重新织入）
+msbuild MyComputerManager.sln /t:Rebuild /p:Configuration=Release
 ```
 
 ### 产物路径
 
-```text
-MyComputerManager\bin\Release\MyComputerManager.exe
-```
+| 产出方式 | 路径 |
+|---|---|
+| 直接编译 | `MyComputerManager\bin\Release\MyComputerManager.exe` |
+| 打包脚本 | `dist\MyComputerManager.exe` |
 
 > 也可以直接用 Visual Studio 打开 `MyComputerManager.sln`，选择 `Release` 配置后生成解决方案。
+
+### 单文件发布
+
+编译产物本身就是**单文件**：第三方程序集（Wpf.Ui、Microsoft.Extensions.* 等）会由 Costura.Fody 作为资源嵌入 `MyComputerManager.exe`，无需额外的打包步骤，也无需随附任何 DLL。
+
+- 依赖的构建期工具：`Fody` 6.9.3 + `Costura.Fody` 6.2.0，已在 `packages.config` 中登记
+- 嵌入规则配置：`FodyWeavers.xml`（`<Costura />` 为默认设置）
+- 验证方式：把 `MyComputerManager.exe` 单独复制到一个空目录中双击运行；或执行 `.\build.ps1 -SmokeTest` 由脚本自动完成这项检查
+
+> **分发时需要两个文件**：`MyComputerManager.exe` 与 `MyComputerManager.exe.config`。`.config` 中包含 `System.Drawing.Common`、`System.Runtime.CompilerServices.Unsafe`、`Microsoft.Extensions.Configuration.EnvironmentVariables` 等程序集的 `bindingRedirect`，由 NuGet 自动生成，不能省略（`build.ps1` 会一并复制到 `dist\`）。
+
+> **不要使用 ILMerge 做合并。** ILMerge 会把 WPF 程序集合并进主程序集，并**把输出程序集重命名为合并后的文件名**。这样一来，XAML 编译期固化在代码里的 pack URI 就会失效（例如 `/MyComputerManager;component/app.xaml`、Wpf.Ui 内部的 `/Wpf.Ui;component/...`），程序会在 `App.InitializeComponent()` 处抛出异常并闪退，表现为双击后毫无反应。WPF 应用应使用"嵌入"（Costura.Fody）而非"合并"（ILMerge）。
 
 ---
 
